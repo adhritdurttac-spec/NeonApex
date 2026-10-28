@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#080b0a" />
+  <title>Neon Apex — Arcade Racing</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;0,900;1,800&family=DM+Mono:wght@400;500&display=swap');
+    :root{--ink:#080b0a;--paper:#edf1e8;--acid:#d9ff43;--muted:#899088;--line:rgba(237,241,232,.16);--red:#ff554d}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper)}
+    body{font-family:'DM Mono',monospace;-webkit-font-smoothing:antialiased;touch-action:none;user-select:none}
+    button{font:inherit;color:inherit;cursor:pointer;border:0}
+    button:focus-visible{outline:2px solid var(--acid);outline-offset:4px}
+    #game{position:fixed;inset:0;width:100%;height:100%;display:block}
+    .grain{position:fixed;inset:0;pointer-events:none;opacity:.04;z-index:2;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.8'/%3E%3C/svg%3E")}
+    .topbar{position:fixed;z-index:5;top:0;left:0;right:0;padding:22px 26px;display:flex;align-items:flex-start;justify-content:space-between;pointer-events:none}
+    .brand{display:flex;align-items:center;gap:11px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-style:italic;font-size:22px;letter-spacing:-.5px}
+    .brand-mark{width:24px;height:24px;background:var(--acid);clip-path:polygon(0 0,100% 0,62% 38%,100% 38%,30% 100%,46% 54%,8% 54%)}
+    .top-actions{display:flex;gap:8px;pointer-events:auto}
+    .icon-btn{width:42px;height:42px;border:1px solid var(--line);background:rgba(8,11,10,.55);backdrop-filter:blur(12px);display:grid;place-items:center;border-radius:50%;transition:.2s}
+    .icon-btn:hover{background:var(--paper);color:var(--ink)}
+    .icon-btn svg{width:17px;height:17px;fill:currentColor}
+    .hud{position:fixed;z-index:4;inset:0;pointer-events:none;transition:opacity .25s}
+    .hud.hidden{opacity:0;visibility:hidden}
+    .speed{position:absolute;left:26px;top:88px;display:flex;align-items:flex-end;gap:10px;filter:drop-shadow(0 3px 12px rgba(0,0,0,.45))}
+    .speed-value{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:clamp(84px,9vw,118px);line-height:.73;letter-spacing:-5px;font-variant-numeric:tabular-nums}
+    .speed-unit{font-size:11px;color:var(--paper);letter-spacing:2px;margin-bottom:3px;opacity:.65}
+    .stats{position:absolute;right:26px;top:82px;text-align:right}
+    .stat-label{font-size:9px;letter-spacing:2.2px;color:var(--muted);margin-bottom:3px}
+    .stat-value{font-family:'Barlow Condensed',sans-serif;font-size:31px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+    .stat-best{font-size:10px;color:var(--muted);margin-top:7px;letter-spacing:1px}
+    .nitro{position:absolute;left:50%;top:22px;transform:translateX(-50%);width:min(480px,42vw);padding:10px 15px 9px;background:linear-gradient(90deg,transparent,rgba(8,11,10,.78) 12%,rgba(8,11,10,.78) 88%,transparent)}
+    .nitro-head{display:flex;justify-content:space-between;font-size:11px;font-weight:500;letter-spacing:2px;margin-bottom:8px;text-shadow:0 2px 6px #000}
+    .nitro-head span:last-child{color:var(--acid)}
+    .nitro-track{height:17px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.28);transform:skewX(-20deg);position:relative;box-shadow:0 4px 16px rgba(0,0,0,.45)}
+    .nitro-track:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 32.8%,#080b0a 32.8%,#080b0a 33.5%,transparent 33.5%,transparent 66.1%,#080b0a 66.1%,#080b0a 66.8%,transparent 66.8%)}
+    .nitro-fill{height:100%;width:50%;background:var(--acid);box-shadow:0 0 14px var(--acid);transition:width .08s linear,background .2s}
+    .nitro-fill.level-2{background:#62e6ff;box-shadow:0 0 14px #62e6ff}
+    .nitro-fill.level-3{background:#ffb547;box-shadow:0 0 16px #ffb547}
+    .nitro-tiers{display:flex;justify-content:space-between;margin-top:7px;font-size:8px;font-weight:500;letter-spacing:1.5px;color:#788078}
+    .nitro-tiers span.active{color:var(--paper)}
+    .overlay{position:fixed;z-index:10;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(5,8,7,.28);backdrop-filter:blur(3px);transition:opacity .3s,visibility .3s}
+    .overlay.hidden{opacity:0;visibility:hidden;pointer-events:none}
+    .panel{width:min(580px,100%);position:relative}
+    .eyebrow{display:flex;align-items:center;gap:10px;color:var(--acid);font-size:10px;letter-spacing:3px;margin-bottom:17px;text-transform:uppercase}
+    .eyebrow:before{content:'';width:30px;height:2px;background:var(--acid)}
+    h1{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-size:clamp(78px,12vw,144px);font-weight:900;letter-spacing:-.065em;line-height:.72;text-transform:uppercase;margin-left:-6px}
+    h1 span{display:block;color:transparent;-webkit-text-stroke:1.5px var(--paper);opacity:.85}
+    .tagline{max-width:390px;color:#b6bdb5;font-size:12px;line-height:1.8;margin:28px 0 25px}
+    .primary{background:var(--acid);color:var(--ink);padding:16px 23px;font-weight:500;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:inline-flex;align-items:center;gap:28px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%);transition:transform .15s,filter .15s}
+    .primary:hover{transform:translateY(-2px);filter:brightness(1.08)}
+    .primary:active{transform:translateY(1px)}
+    .primary .arrow{font-size:20px;line-height:10px}
+    .position{position:absolute;left:30px;top:190px}
+    .position-value{font-family:'Barlow Condensed',sans-serif;font-size:43px;font-weight:700;font-style:italic;line-height:1}
+    .position-value small{font-size:18px;color:var(--muted);font-weight:500}
+
+    .map-select{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 20px}
+    .map-card{position:relative;text-align:left;padding:11px 12px;border:1px solid var(--line);background:rgba(8,11,10,.55);backdrop-filter:blur(8px);transition:.18s}
+    .map-card:hover{border-color:rgba(217,255,67,.6);transform:translateY(-2px)}
+    .map-card.selected{border-color:var(--acid);background:rgba(217,255,67,.09)}
+    .map-card span{display:block;font-size:7px;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px}
+    .map-card strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:18px;line-height:1;font-weight:700;text-transform:uppercase}
+    .map-card small{display:block;margin-top:6px;font-size:9px;color:var(--acid)}
+
+    .car-select{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 18px}
+    .car-card{--car:#d9ff43;position:relative;text-align:left;padding:10px;border:1px solid var(--line);background:rgba(8,11,10,.6);transition:.18s;min-width:0}
+    .car-card:hover{border-color:var(--car);transform:translateY(-2px)}
+    .car-card.selected{border-color:var(--car);background:rgba(255,255,255,.07);box-shadow:inset 0 -2px var(--car)}
+    .car-swatch{display:block;width:13px;height:24px;margin-bottom:8px;background:var(--car);clip-path:polygon(25% 0,75% 0,100% 25%,92% 100%,8% 100%,0 25%);filter:drop-shadow(0 0 5px var(--car))}
+    .car-card strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:16px;line-height:1;font-weight:700;text-transform:uppercase;white-space:nowrap}
+    .car-card small{display:block;margin-top:6px;font-size:7px;line-height:1.4;letter-spacing:.4px;color:var(--car)}
+    #menu .panel{max-height:calc(100vh - 36px);overflow-y:auto;scrollbar-width:none}
+    #menu .panel::-webkit-scrollbar{display:none}
+
+    .wallet{height:42px;display:flex;align-items:center;gap:7px;padding:0 13px;border:1px solid rgba(217,255,67,.32);background:rgba(8,11,10,.65);color:var(--acid);font-size:10px;letter-spacing:.7px;backdrop-filter:blur(12px);border-radius:21px;white-space:nowrap}
+    .wallet:before{content:'◆';font-size:9px}
+    .car-card.locked{opacity:.68}
+    .car-card.locked .car-swatch{filter:grayscale(.7);opacity:.65}
+    .car-card small.perk-up{color:var(--car);margin-bottom:2px}
+    .car-card small.perk-down{color:#ff8078;margin-top:0}
+    .car-price{display:block;margin-top:8px;padding-top:6px;border-top:1px solid var(--line);font-style:normal;font-size:8px;letter-spacing:.8px;color:var(--paper)}
+    .car-card.locked .car-price{color:#ffcf5a}
+    .race-reward{margin:-10px 0 20px;color:var(--acid);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;letter-spacing:.5px}
+    .race-reward small{font-family:'DM Mono',monospace;color:var(--muted);font-size:8px;letter-spacing:1px;margin-left:8px}
+
+    .tuning{margin:0 0 18px;padding:13px 14px;border:1px solid var(--line);background:rgba(8,11,10,.5);backdrop-filter:blur(8px)}
+    .tuning-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;flex-wrap:wrap}
+    .tuning-title{font-size:9px;letter-spacing:2px;color:var(--acid);white-space:nowrap;padding-top:2px}
+    .tuning-title span{color:var(--paper)}
+    .statbars{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;flex:1;min-width:200px;max-width:330px}
+    .statbar{display:flex;align-items:center;gap:7px;font-size:7px;letter-spacing:1.2px;color:var(--muted)}
+    .statbar span{width:40px;text-align:right}
+    .statbar-track{flex:1;height:4px;background:rgba(255,255,255,.12)}
+    .statbar-fill{height:100%;width:20%;background:var(--tune-accent,#d9ff43);box-shadow:0 0 6px var(--tune-accent,#d9ff43);transition:width .3s}
+    .tuning-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .tune-row{padding:10px 11px;border:1px solid var(--line);background:rgba(255,255,255,.03);display:flex;flex-direction:column;gap:7px}
+    .tune-top{display:flex;justify-content:space-between;align-items:baseline}
+    .tune-top strong{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+    .tune-lv{font-size:8px;color:var(--acid);letter-spacing:1px}
+    .tune-pips{display:flex;gap:4px}
+    .tune-pips i{width:17px;height:5px;background:rgba(255,255,255,.14);transform:skewX(-20deg);transition:.2s}
+    .tune-pips i.on{background:var(--tune-accent,#d9ff43);box-shadow:0 0 6px var(--tune-accent,#d9ff43)}
+    .tune-row small{font-size:7px;letter-spacing:.6px;color:var(--muted)}
+    .tune-buy{margin-top:auto;padding:8px 9px;border:1px solid rgba(217,255,67,.4);background:rgba(217,255,67,.08);color:var(--acid);font-size:8px;letter-spacing:1.2px;text-transform:uppercase;transition:.15s}
+    .tune-buy:hover:not(:disabled){background:var(--acid);color:var(--ink);transform:translateY(-1px)}
+    .tune-buy:disabled{opacity:.45;cursor:default}
+    .tune-row.maxed .tune-buy{border-color:rgba(255,255,255,.2);color:var(--muted);background:transparent}
+    .result-actions{display:flex;align-items:center;gap:12px}
+    .secondary{background:transparent;border:1px solid var(--line);padding:15px 18px;font-size:9px;letter-spacing:1px;text-transform:uppercase;transition:.18s}
+    .secondary:hover{border-color:var(--paper);background:rgba(255,255,255,.07)}
+    .start-row{display:flex;align-items:stretch;gap:22px}
+    .opponent-picker{width:220px;padding:8px 0 0}
+    .opponent-head{display:flex;justify-content:space-between;align-items:center;font-size:8px;letter-spacing:1.4px;color:var(--muted);margin-bottom:7px}
+    .opponent-head output{font-family:'Barlow Condensed',sans-serif;font-size:23px;line-height:1;color:var(--acid);font-weight:600}
+    .opponent-stepper{display:flex;align-items:center;gap:9px}
+    .opponent-stepper button{background:rgba(255,255,255,.08);width:25px;height:25px;border-radius:50%;font-size:16px;line-height:1;transition:.15s}
+    .opponent-stepper button:hover{background:var(--acid);color:var(--ink)}
+    input[type=range]{appearance:none;-webkit-appearance:none;flex:1;min-width:0;height:3px;background:rgba(255,255,255,.2);outline:none;cursor:pointer}
+    input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--acid);box-shadow:0 0 8px rgba(217,255,67,.4)}
+    input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--acid)}
+
+    .controls{display:flex;flex-wrap:wrap;gap:22px;margin-top:31px;padding-top:20px;border-top:1px solid var(--line);font-size:9px;color:var(--muted);letter-spacing:.6px}
+    .control{display:flex;align-items:center;gap:8px}
+    kbd{font-family:inherit;color:var(--paper);border:1px solid rgba(255,255,255,.25);padding:4px 7px;min-width:26px;text-align:center;border-radius:3px;font-size:9px}
+    .menu-best{position:absolute;right:0;bottom:3px;text-align:right;color:var(--muted);font-size:9px;letter-spacing:1px}
+    .menu-best strong{display:block;color:var(--paper);font-family:'Barlow Condensed',sans-serif;font-size:25px;font-weight:600;letter-spacing:0;margin-top:4px}
+    .result-title{font-family:'Barlow Condensed',sans-serif;font-size:clamp(65px,10vw,108px);font-weight:900;font-style:italic;line-height:.85;letter-spacing:-.045em;text-transform:uppercase}
+    .result-grid{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:28px 0; padding:20px 0;gap:16px}
+    .result-grid small{display:block;color:var(--muted);font-size:8px;letter-spacing:1.5px;margin-bottom:7px}
+    .result-grid strong{font-family:'Barlow Condensed',sans-serif;font-size:34px;font-weight:600}
+    .new-best{color:var(--acid);font-size:10px;letter-spacing:2px;margin-top:18px;display:none}
+    .pause-panel{text-align:center;width:min(420px,100%)}
+    .pause-panel .result-title{font-size:80px}
+    .pause-panel .tagline{margin:18px auto 24px}
+    .touch{position:fixed;z-index:6;left:0;right:0;bottom:20px;display:none;justify-content:space-between;padding:0 20px;pointer-events:none}
+    .touch-group{display:flex;gap:10px;pointer-events:auto}
+    .touch-btn{width:62px;height:62px;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:rgba(8,11,10,.5);backdrop-filter:blur(8px);display:grid;place-items:center;font-size:23px;touch-action:none}
+    .touch-btn.active{background:var(--acid);color:var(--ink)}
+    .touch-btn.boost{width:72px;height:72px;border-color:var(--acid);color:var(--acid);font-size:9px;letter-spacing:1px}
+    .toast{position:fixed;z-index:20;top:24%;left:50%;transform:translateX(-50%);font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:clamp(19px,3vw,28px);color:var(--acid);text-shadow:0 0 20px rgba(217,255,67,.5);opacity:0;pointer-events:none;white-space:nowrap}
+    .toast.pop{animation:toast .8s ease-out}
+    @keyframes toast{0%{opacity:0;transform:translate(-50%,12px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-30px) scale(1.05)}}
+    @media (pointer:coarse),(max-width:700px){.touch.playing{display:flex}.topbar{padding:17px}.brand{font-size:19px}.speed{left:18px;top:128px;bottom:auto}.speed-value{font-size:76px;letter-spacing:-4px}.speed-unit{font-size:9px}.nitro{left:50%;right:auto;top:64px;bottom:auto;width:calc(100% - 36px);max-width:440px;padding:8px 10px}.nitro-head{font-size:10px;margin-bottom:6px}.nitro-track{height:14px}.nitro-tiers{font-size:7px;margin-top:5px}.stats{right:18px;top:134px}.position{left:20px;top:204px}.position-value{font-size:36px}.overlay{padding:24px;background:rgba(5,8,7,.48)}.tagline{margin-top:25px}.controls{gap:12px}.controls .desktop-only{display:none}.menu-best{position:static;text-align:left;margin-top:25px}.menu-best strong{display:inline;margin-left:8px}.result-grid{grid-template-columns:repeat(2,1fr)}.result-grid strong{font-size:28px}}
+    @media (max-width:480px){.car-select{gap:4px}.car-card{padding:8px 6px}.car-card strong{font-size:12px}.car-card small{font-size:6px}.car-swatch{height:19px;width:11px;margin-bottom:6px}.map-card{padding:9px 8px}.map-card strong{font-size:15px}.map-card span{font-size:6px}.start-row{gap:14px}.opponent-picker{width:170px}.primary{padding:16px 17px;gap:17px}.tuning-grid{grid-template-columns:1fr}.statbars{max-width:none;min-width:0;width:100%}}
+    @media (max-height:650px){h1{font-size:74px}.tagline{margin:18px 0}.controls{margin-top:20px;padding-top:14px}.menu-best{display:none}.result-grid{margin:18px 0}.result-title{font-size:60px}}
+  </style>
+</head>
+<body>
+  <canvas id="game" aria-label="Neon Apex racing game"></canvas>
+  <div class="grain"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"></span>NEON APEX</div>
+    <div class="top-actions">
+      <div class="wallet" id="wallet" title="Race credits">0 CR</div>
+      <button class="icon-btn" id="soundBtn" aria-label="Toggle sound" title="Toggle sound">
+        <svg id="soundOn" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zm-2.5-8.8v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+        <svg id="soundOff" viewBox="0 0 24 24" style="display:none"><path d="M3 9v6h4l5 5V4L7 9H3zm13.6 3 2.5-2.5-1.4-1.4-2.5 2.5-2.5-2.5-1.4 1.4 2.5 2.5-2.5 2.5 1.4 1.4 2.5-2.5 2.5 2.5 1.4-1.4-2.5-2.5z"/></svg>
+      </button>
+      <button class="icon-btn" id="pauseBtn" aria-label="Pause game" title="Pause (P)" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="hud hidden" id="hud">
+    <div class="position"><div class="stat-label">RACE POSITION</div><div class="position-value"><span id="position">6</span><small> / <span id="fieldSize">10</span></small></div></div>
+    <div class="speed"><span class="speed-value" id="speed">000</span><span class="speed-unit">KM/H</span></div>
+    <div class="stats"><div class="stat-label">SCORE</div><div class="stat-value" id="score">000000</div><div class="stat-best" id="distance">0.00 KM</div></div>
+    <div class="nitro"><div class="nitro-head"><span id="nitroLevel">NITRO · LV 1</span><span id="nitroText">50%</span></div><div class="nitro-track"><div class="nitro-fill" id="nitroFill"></div></div><div class="nitro-tiers"><span id="tier1" class="active">LV 1</span><span id="tier2">LV 2</span><span id="tier3">LV 3</span></div></div>
+  </section>
+  <div class="toast" id="toast">NEAR MISS +250</div>
+
+  <main class="overlay" id="menu">
+    <div class="panel">
+      <div class="eyebrow">Midnight street series</div>
+      <h1>Neon<span>Apex</span></h1>
+      <p class="tagline">Own the night. Highly competitive rivals use nitro and hunt for position. Boost to knock them down before they spin you out.</p>
+      <div class="map-select" aria-label="Choose a map">
+        <button class="map-card selected" data-map="0"><span>MAP 01</span><strong>Neon City</strong><small>2 KM · STREET</small></button>
+        <button class="map-card" data-map="1"><span>MAP 02</span><strong>Canyon Run</strong><small>4 KM · DESERT</small></button>
+        <button class="map-card" data-map="2"><span>MAP 03</span><strong>Midnight GP</strong><small>10 KM · CIRCUIT</small></button>
+      </div>
+      <div class="car-select" aria-label="Choose your car">
+        <button class="car-card selected" data-car="0" aria-pressed="true" style="--car:#d9ff43"><span class="car-swatch"></span><strong>Scrap 01</strong><small class="perk-up">+25% RACE CREDITS</small><small class="perk-down">SLOW · WEAK STEERING</small><em class="car-price">OWNED</em></button>
+        <button class="car-card locked" data-car="1" aria-pressed="false" style="--car:#ff5b4d"><span class="car-swatch"></span><strong>Comet S</strong><small class="perk-up">+25 KM/H TOP SPEED</small><small class="perk-down">+20% NITRO DRAIN</small><em class="car-price">1,200 CR</em></button>
+        <button class="car-card locked" data-car="2" aria-pressed="false" style="--car:#a97aff"><span class="car-swatch"></span><strong>Titan XR</strong><small class="perk-up">SPINOUT RESISTANCE</small><small class="perk-down">SLOW · HEAVY STEERING</small><em class="car-price">2,500 CR</em></button>
+        <button class="car-card locked" data-car="3" aria-pressed="false" style="--car:#62e6ff"><span class="car-swatch"></span><strong>Volt RS</strong><small class="perk-up">NITRO EFFICIENCY</small><small class="perk-down">LOW GRIP · −10 KM/H</small><em class="car-price">4,000 CR</em></button>
+        <button class="car-card locked" data-car="4" aria-pressed="false" style="--car:#ff8b3d"><span class="car-swatch"></span><strong>Brutus V8</strong><small class="perk-up">+50% KNOCKDOWN SCORE</small><small class="perk-down">WIDE BODY · SLUGGISH</small><em class="car-price">3,200 CR</em></button>
+        <button class="car-card locked" data-car="5" aria-pressed="false" style="--car:#ff4d8d"><span class="car-swatch"></span><strong>Vector X</strong><small class="perk-up">NEAR MISS ×1.6 · WIDE WINDOW</small><small class="perk-down">−15% CREDITS EARNED</small><em class="car-price">5,000 CR</em></button>
+        <button class="car-card locked" data-car="6" aria-pressed="false" style="--car:#38d6bc"><span class="car-swatch"></span><strong>Phantom GT</strong><small class="perk-up">+45 KM/H · RAZOR STEERING</small><small class="perk-down">GLASS CANNON · LONG SPINOUT</small><em class="car-price">6,000 CR</em></button>
+        <button class="car-card locked" data-car="7" aria-pressed="false" style="--car:#f0f1e8"><span class="car-swatch"></span><strong>Aegis RT</strong><small class="perk-up">+25% NITRO TANK · IRON ARMOR</small><small class="perk-down">SLOW · HEAVY STEERING</small><em class="car-price">7,500 CR</em></button>
+      </div>
+      <div class="tuning" aria-label="Tuning garage">
+        <div class="tuning-head">
+          <span class="tuning-title">TUNING GARAGE · <span id="tuneCarName">SCRAP 01</span></span>
+          <div class="statbars">
+            <div class="statbar"><span>SPEED</span><div class="statbar-track"><div class="statbar-fill" data-stat="speed"></div></div></div>
+            <div class="statbar"><span>GRIP</span><div class="statbar-track"><div class="statbar-fill" data-stat="grip"></div></div></div>
+            <div class="statbar"><span>NITRO</span><div class="statbar-track"><div class="statbar-fill" data-stat="nitro"></div></div></div>
+            <div class="statbar"><span>ARMOR</span><div class="statbar-track"><div class="statbar-fill" data-stat="armor"></div></div></div>
+          </div>
+        </div>
+        <div class="tuning-grid" id="tuningGrid"></div>
+      </div>
+      <div class="start-row">
+        <button class="primary" id="startBtn">Start engine <span class="arrow">→</span></button>
+        <div class="opponent-picker">
+          <div class="opponent-head"><span>RACE OPPONENTS</span><output id="opponentCount" for="opponents">10</output></div>
+          <div class="opponent-stepper"><button id="oppMinus" aria-label="Fewer opponents">−</button><input id="opponents" type="range" min="6" max="20" step="1" value="10" aria-label="Number of opponents"><button id="oppPlus" aria-label="More opponents">+</button></div>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="control"><kbd>A</kbd><kbd>D</kbd><span>STEER</span></div>
+        <div class="control"><kbd>SPACE</kbd><span>NITRO</span></div>
+        <div class="control desktop-only"><kbd>P</kbd><span>PAUSE</span></div>
+      </div>
+      <div class="menu-best">PERSONAL BEST<strong id="menuBest">000000</strong></div>
+    </div>
+  </main>
+
+  <section class="overlay hidden" id="gameover">
+    <div class="panel">
+      <div class="eyebrow" id="resultEyebrow">Run terminated</div>
+      <div class="result-title" id="resultTitle">Wrecked.</div>
+      <div class="new-best" id="newBest">NEW PERSONAL BEST</div>
+      <div class="result-grid">
+        <div><small>SCORE</small><strong id="finalScore">0</strong></div>
+        <div><small>DISTANCE</small><strong id="finalDistance">0.0 km</strong></div>
+        <div><small>NEAR MISSES</small><strong id="finalNear">0</strong></div>
+        <div><small>KNOCKDOWNS</small><strong id="finalKnock">0</strong></div>
+        <div><small>RACE POS</small><strong id="finalPosition">P1</strong></div>
+      </div>
+      <div class="race-reward" id="raceReward">+0 CR<small>RACE EARNINGS</small></div>
+      <div class="result-actions"><button class="primary" id="restartBtn">Race again <span class="arrow">↻</span></button><button class="secondary" id="mapSelectBtn">Change map</button></div>
+    </div>
+  </section>
+
+  <section class="overlay hidden" id="paused">
+    <div class="pause-panel">
+      <div class="eyebrow" style="justify-content:center">Pit stop</div>
+      <div class="result-title">Paused</div>
+      <p class="tagline">The street can wait. Your run is on hold.</p>
+      <button class="primary" id="resumeBtn">Resume <span class="arrow">→</span></button>
+    </div>
+  </section>
+
+  <div class="touch" id="touch">
+    <div class="touch-group"><button class="touch-btn" data-key="left" aria-label="Steer left">←</button><button class="touch-btn" data-key="right" aria-label="Steer right">→</button></div>
+    <div class="touch-group"><button class="touch-btn boost" data-key="boost" aria-label="Use nitro">NITRO</button></div>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
